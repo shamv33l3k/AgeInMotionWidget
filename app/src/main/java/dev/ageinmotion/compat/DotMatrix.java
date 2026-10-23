@@ -40,7 +40,9 @@ final class DotMatrix {
         float pitch = Math.min((width - 36f) / Math.max(1, cols), (height - 24f) / 7f);
         float startX = (width - cols * pitch) / 2f + pitch / 2f;
         float startY = (height - 7 * pitch) / 2f + pitch / 2f;
-        float radius = pitch * .205f;
+        // Slightly fuller dots remain legible when 11 age characters are
+        // scaled down to a 2x2 Android home-screen widget.
+        float radius = pitch * .29f;
 
         for (int i = 0; i < content.length(); i++) {
             String[] glyph = FONT.get(content.charAt(i));

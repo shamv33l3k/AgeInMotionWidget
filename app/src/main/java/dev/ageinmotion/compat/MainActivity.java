@@ -2,6 +2,9 @@ package dev.ageinmotion.compat;
 
 import android.app.Activity;
 import android.app.DatePickerDialog;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -28,7 +31,9 @@ public final class MainActivity extends Activity {
     private ImageView liveAge;
     private TextView birthDateLabel;
     private TextView runningCaption;
+    private Button motionButton;
     private boolean active;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 2002;
 
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
@@ -134,15 +139,39 @@ public final class MainActivity extends Activity {
             android.widget.Toast.makeText(this, "Widget refreshed", android.widget.Toast.LENGTH_SHORT).show();
         });
 
+        TextView motionHeading = label("HOME SCREEN / ANIMATED NUMBERS", 12, Color.WHITE);
+        motionHeading.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        LinearLayout.LayoutParams motionHeaderParams = new LinearLayout.LayoutParams(-1, -2);
+        motionHeaderParams.topMargin = dp(26);
+        body.addView(motionHeading, motionHeaderParams);
+
+        TextView motionDescription = label(
+                "Enable Live Motion to animate the AGE digits on the home screen. "
+              + "8 decimal places update every 2 seconds while your screen is on. "
+              + "Android may pause updates to save power. Uses extra battery and "
+              + "shows an ongoing notification until switched off.",
+                12, 0xFFAAAAAA);
+        motionDescription.setLineSpacing(dp(3), 1f);
+        motionDescription.setPadding(0, dp(8), 0, dp(12));
+        body.addView(motionDescription);
+
+        motionButton = new Button(this);
+        motionButton.setTextSize(14);
+        motionButton.setAllCaps(false);
+        motionButton.setOnClickListener(v -> toggleLiveMotion());
+        body.addView(motionButton, new LinearLayout.LayoutParams(-1, dp(54)));
+        updateLiveMotionButton();
+
         TextView steps = label(
                 "ADD TO YOUR HOME SCREEN\n\n"
               + "1. Set your date of birth above.\n"
               + "2. Long-press an empty area of your home screen.\n"
               + "3. Tap Widgets and find Age in Motion.\n"
               + "4. Drag it onto the home screen (2 × 2 recommended).\n\n"
-              + "The app preview counts continuously. On the home screen, the age number refreshes "
-              + "approximately every 30 minutes, while the time-today seconds keep ticking. "
-              + "Android manages widget refreshes to save battery.",
+              + "Turn on LIVE MOTION above to make the age digits change on the HOME SCREEN. "
+              + "Without Live Motion the age updates about every 30 minutes, while "
+              + "the TODAY chronometer continues ticking. Switch Live Motion OFF "
+              + "to save battery.",
                 13, 0xFFAEAEAE);
         steps.setLineSpacing(dp(4), 1f);
         LinearLayout.LayoutParams stepsParams = new LinearLayout.LayoutParams(-1, -2);
@@ -158,12 +187,64 @@ public final class MainActivity extends Activity {
         active = true;
         handler.post(refresh);
         updateBirthdayLabel();
+        updateLiveMotionButton();
     }
 
     @Override protected void onPause() {
         active = false;
         handler.removeCallbacks(refresh);
         super.onPause();
+    }
+
+    private void toggleLiveMotion() {
+        if (LiveMotionService.isRunning()) {
+            stopService(new Intent(this, LiveMotionService.class));
+            handler.postDelayed(this::updateLiveMotionButton, 250L);
+            return;
+        }
+        if (AgeCalculator.birthday(this) == null) {
+            android.widget.Toast.makeText(this, "Choose your birthday first", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    NOTIFICATION_PERMISSION_REQUEST);
+            return;
+        }
+        enableLiveMotion();
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            // FGS may run even if notification permission is denied on Android 13+;
+            // Android shows it in its running-apps task manager instead.
+            enableLiveMotion();
+        }
+    }
+
+    private void enableLiveMotion() {
+        Intent service = new Intent(this, LiveMotionService.class);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
+            else startService(service);
+            handler.postDelayed(this::updateLiveMotionButton, 450L);
+        } catch (RuntimeException blocked) {
+            android.widget.Toast.makeText(this,
+                    "Android blocked Live Motion. Try turning off Battery Saver.",
+                    android.widget.Toast.LENGTH_LONG).show();
+            updateLiveMotionButton();
+        }
+    }
+
+    private void updateLiveMotionButton() {
+        if (motionButton == null) return;
+        boolean enabled = LiveMotionService.isRunning();
+        motionButton.setText(enabled ? "●  LIVE MOTION ON   —   TAP TO STOP" :
+                "○  START LIVE MOTION (2 SEC)");
+        motionButton.setTextColor(enabled ? Color.BLACK : Color.WHITE);
+        motionButton.setBackground(rounded(enabled ? Color.WHITE : 0xFF333333, dp(15)));
     }
 
     private void showDatePicker() {

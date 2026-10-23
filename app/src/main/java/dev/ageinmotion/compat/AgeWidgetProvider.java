@@ -37,6 +37,13 @@ public final class AgeWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    @Override
+    public void onDisabled(Context context) {
+        // The animation should not keep running when the final widget is removed.
+        context.stopService(new Intent(context, LiveMotionService.class));
+        super.onDisabled(context);
+    }
+
     static void updateAll(Context context) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         int[] ids = manager.getAppWidgetIds(new ComponentName(context, AgeWidgetProvider.class));
@@ -46,14 +53,14 @@ public final class AgeWidgetProvider extends AppWidgetProvider {
     private static void update(Context context, AppWidgetManager manager, int id) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_age);
         LocalDate birthday = AgeCalculator.birthday(context);
-        String age = AgeCalculator.decimalAge(birthday, 4);
+        String age = AgeCalculator.decimalAge(birthday, LiveMotionService.isRunning() ? 8 : 4);
         views.setImageViewBitmap(R.id.dot_age, DotMatrix.bitmap(age));
 
         if (birthday == null) {
             views.setTextViewText(R.id.widget_caption, "TAP TO SET DATE OF BIRTH");
             views.setViewVisibility(R.id.live_timer, View.GONE);
         } else {
-            views.setTextViewText(R.id.widget_caption, "YEARS / ALWAYS MOVING");
+            views.setTextViewText(R.id.widget_caption, LiveMotionService.isRunning() ? "LIVE AGE / UPDATING" : "YEARS / TAP TO CONFIGURE");
             views.setViewVisibility(R.id.live_timer, View.VISIBLE);
             long midnightMillis = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
                     .toInstant().toEpochMilli();
