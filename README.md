@@ -1,47 +1,81 @@
-# Age in Motion • Nothing OS 3.2 compatibility edition
+# Age in Motion — Nothing OS 3.2 Edition
 
-A standalone **Android home-screen widget** inspired by the "Age in Motion" concept. This is an **independent recreation, not an official Nothing Playground widget** and is not associated with Nothing Technology Limited or Rahul.
+**A community-inspired Android widget for Nothing Phone users who cannot run the original Age in Motion widget on Nothing OS 4.0+.**
 
-## Why this edition exists
+This independent recreation brings the Age in Motion concept to Nothing Phone (1) and other compatible Android devices using standard Android home-screen widgets.
 
-The official community widget requires Nothing OS 4.0+. Nothing Phone (1) on Nothing OS 3.2 uses Android 15 and can install ordinary Android app widgets, so this project uses standard Android `AppWidgetProvider` APIs instead of Nothing Playground.
+### ❤️ Special Thanks & Credits
 
-## What is included
+A huge salute and heartfelt appreciation to **Mr. Rahul**, the original creator of **Age in Motion** on Nothing Playground.
 
-- Black rounded 2×2 home-screen widget, white handcrafted **5×7 dot-matrix** age digits.
-- Birthday picker; date is stored **locally only** in Android SharedPreferences.
-- Age computed from calendar anniversaries, including leap years, local midnight, and local time zone.
-- Live age decimal to **eight places inside the open app**, redrawing about every 300 ms.
-- Home-screen widget age decimal to **four places**, redrawn at system-controlled intervals **around every 30 minutes**; tapping the widget or Refresh forces a redraw.
-- A seconds-ticking **"TODAY HH:MM:SS" chronometer** on the home-screen widget, using Android's native Chronometer—no constantly running background service, internet, special permission, root, or additional widget launcher is needed.
-- Supports Android 8.0 and later (API 26+), targeting Android 15; intended for Nothing Phone (1), Nothing OS 3.2.
+His brilliant idea and design inspired this compatibility edition. Full credit for the original concept goes to him.
 
-**Important limitation:** Android limits native widget refreshes (`updatePeriodMillis` is at least 30 minutes). Therefore, the decimal AGE number **does not change every split second on the HOME SCREEN**, unlike some special OS 4.0 Playground widgets. The seconds line *does* tick, and the full-screen app shows a continuously updating decimal age. This behavior is deliberate for compatibility and battery life.
+**Original Creation:** [Age in Motion by Rahul — Nothing Playground](https://playground.nothing.tech/detail/app/A0iu5DKA7eGhHhZD)
 
-## Build an APK on your Windows PC
+*This is an unofficial, independently developed, community-inspired recreation. It is not affiliated with or endorsed by Nothing Technology Limited or Rahul.*
 
-1. Install **Android Studio**: https://developer.android.com/studio
-2. Extract this ZIP to a normal folder, e.g. `C:\Users\YourName\Documents\AgeInMotionCompat`.
-3. In Android Studio select **File → Open** and choose the extracted project folder (the folder containing `settings.gradle`).
-4. Make sure Android SDK Platform 35 is installed from **Tools → SDK Manager**, and use a JDK 17 or newer compatible with Android Gradle Plugin 8.7.3. You may need a Gradle 8.9 distribution: this archive deliberately does not contain the generated Gradle wrapper JAR because it cannot be generated in this environment. Android Studio may help you configure Gradle; if prompted, select/use **Gradle 8.9**.
-5. Let Android Studio sync and resolve the Android Gradle Plugin, then click **Build → Build Bundle(s) / APK(s) → Build APK(s)**.
-6. Find the generated file: `app/build/outputs/apk/debug/app-debug.apk`.
-7. Copy the APK to your Nothing Phone (1), open it, and allow installation from your file-manager app if prompted. Only install APKs you built yourself from sources you trust.
-8. Open **Age in Motion** on the phone, tap **Choose My Birthday**, select your real birthday.
-9. Long-press your home screen → **Widgets** → **Age in Motion Widget**, then drag onto your home screen. Resize to 2×2 or wider.
+## Why This Edition Exists
 
-### Troubleshooting
+The original Age in Motion widget requires **Nothing OS 4.0 or later**, leaving Nothing Phone (1) users on Nothing OS 3.2 unable to install it.
 
-- If `No Gradle wrapper` is reported, select/configure an installed Gradle 8.9 installation in Android Studio's Gradle settings, or run `gradle wrapper --gradle-version 8.9` using an installed Gradle command inside the project root (this will generate the standard wrapper scripts, JAR, and properties).
-- If Android SDK Platform 35 is missing, install it via the SDK Manager.
-- If the widget shows `00.0000`, open the app and select a birthday.
-- If digits look small, resize the widget to 3×2 or 4×2.
-- If the age doesn't immediately change on the home screen, open the app and press **Refresh Home-Screen Widget**. Android controls automatic update timing.
+This project provides an alternative built with standard Android widget APIs, without requiring an OS upgrade, root access, or a third-party widget launcher.
 
-## No network / tracking
+## Features
 
-No `INTERNET` permission, analytics, ads, account login, network requests, or background services are included. Birthdate stays on the device unless the user copies/export it themselves.
+- Minimalist black widget with white dot-matrix digits.
+- Real-time age calculation based on your date of birth.
+- Live decimal-age counter inside the application.
+- Home-screen age display with periodic updates.
+- Seconds-ticking home-screen chronometer.
+- Birthday saved locally on your device.
+- No advertisements, tracking, account registration, or internet permission.
+- Lightweight design focused on compatibility and battery efficiency.
 
-## Build status
+## Compatibility
 
-**Source project provided; APK not compiled or tested on a physical device here.** This environment does not include the Android SDK or Gradle, so test on your device after building in Android Studio. Code is delivered as a complete Android Gradle source project, not a prebuilt app.
+- **Confirmed working:** Nothing Phone (1) — Nothing OS 3.2.
+- **Minimum Android version:** Android 8.0 (API 26).
+- Other compatible Android devices may work but have not been individually verified.
+
+## Download & Installation
+
+Download the APK from the project's GitHub Releases section when a release is available.
+
+To obtain the current GitHub Actions build:
+
+1. Open the repository's **Actions** tab.
+2. Select **Build Android APK**.
+3. Open the latest successful workflow run.
+4. Download the APK artifact.
+5. Extract the ZIP to obtain `app-debug.apk`.
+6. Transfer the APK to your phone and install it.
+7. Open the app and select your birthday.
+8. Long-press your home screen, open **Widgets**, and add **Age in Motion**.
+
+GitHub Actions artifact downloads require a GitHub account with repository read access.
+
+## Build from Source
+
+The project can be built using GitHub Actions without installing Android Studio.
+
+Developers can also build it locally using Android Studio, JDK 17, Android SDK 35, and a compatible Gradle installation.
+
+## Important Limitation
+
+The age digits on the home-screen widget update periodically rather than continuously every fraction of a second because of standard Android widget limitations.
+
+The seconds chronometer continues ticking, while the app provides a more frequently updated decimal-age display.
+
+## Privacy
+
+Your birthday is stored locally using Android SharedPreferences. The app does not request internet access or contain analytics, advertisements, or tracking services.
+
+## Project Status
+
+✅ Successfully built using GitHub Actions.
+
+✅ Reported working on Nothing Phone (1), Nothing OS 3.2.
+
+This is an independent compatibility project created with respect and appreciation for Rahul's original work.
+
+**Made for the Nothing community. Inspired by Rahul. ❤️**
