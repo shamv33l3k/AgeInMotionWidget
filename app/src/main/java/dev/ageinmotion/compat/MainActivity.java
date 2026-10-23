@@ -16,6 +16,10 @@ import android.view.Gravity;
 import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.view.View;
 import android.widget.DatePicker;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -34,6 +38,7 @@ public final class MainActivity extends Activity {
     private TextView liveExplanation;
     private Button motionButton;
     private boolean active;
+    private DeviceTheme palette;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 2002;
 
     private final Runnable redraw = new Runnable() {
@@ -42,9 +47,9 @@ public final class MainActivity extends Activity {
             LocalDate dob = AgeCalculator.birthday(MainActivity.this);
             AgeCalculator.AgeSnapshot s = AgeCalculator.snapshot(dob);
             wholeImage.setImageBitmap(DotMatrix.bitmap(dob == null ? "--" :
-                    String.valueOf(s.fullYears), 180, 108));
+                    String.valueOf(s.fullYears), 180, 108, palette.accent));
             fractionImage.setImageBitmap(DotMatrix.bitmap(dob == null ? ".--------" :
-                    s.fractionalDigits(8), 490, 108));
+                    s.fractionalDigits(8), 490, 108, palette.accent));
             liveExplanation.setText(dob == null ? "Choose your birthday to begin." :
                     s.fullYears + " = completed birthdays\n" +
                     s.fractionalDigits(8) + " = part of the year since your last birthday\n" +
@@ -55,11 +60,16 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(0xFF090909);
-        getWindow().setNavigationBarColor(0xFF090909);
+        palette = DeviceTheme.get(this);
+        getWindow().setStatusBarColor(palette.background);
+        getWindow().setNavigationBarColor(palette.background);
+        if (Build.VERSION.SDK_INT >= 26) {
+            getWindow().getDecorView().setSystemUiVisibility(palette.dark ? 0 :
+                    (View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR));
+        }
         int pad = dp(22);
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(0xFF090909);
+        scroll.setBackgroundColor(palette.background);
         scroll.setFillViewport(true);
         scroll.setPadding(pad, dp(34), pad, dp(28));
         if (Build.VERSION.SDK_INT >= 35) {
@@ -74,22 +84,59 @@ public final class MainActivity extends Activity {
         body.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(body);
 
-        body.addView(label("N O T H I N G  O S  3.2  /  COMPATIBILITY", 10, 0xFFAAAAAA));
-        TextView title = label("AGE IN MOTION", 28, Color.WHITE);
+        body.addView(label("U N I V E R S A L  /  A N D R O I D  W I D G E T", 10, palette.muted));
+        TextView title = label("AGE IN MOTION", 28, palette.text);
         title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         title.setPadding(0, dp(12), 0, dp(8));
         body.addView(title);
         TextView intro = label("Every second matters. See your exact age, explained — with battery-aware motion.",
-                14, 0xFFBBBBBB);
+                14, palette.muted);
         intro.setPadding(0, 0, 0, dp(24));
         body.addView(intro);
+
+        // Device manufacturer detection never locks the user into a brand theme.
+        body.addView(label("YOUR DEVICE", 11, palette.muted));
+        TextView device = label(palette.deviceLabel, 14, palette.text);
+        device.setPadding(0, dp(6), 0, dp(6));
+        body.addView(device);
+        TextView explanation = label(palette.family + " • " + palette.explanation, 12, palette.muted);
+        explanation.setPadding(0, 0, 0, dp(10));
+        body.addView(explanation);
+        body.addView(label("WIDGET THEME", 11, palette.text));
+        Spinner themePicker = styledSpinner(DeviceTheme.STYLES,
+                AgeCalculator.settings(this).getInt("theme_style", 0));
+        body.addView(themePicker);
+        themePicker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                if (AgeCalculator.settings(MainActivity.this).getInt("theme_style", 0) != pos) {
+                    AgeCalculator.settings(MainActivity.this).edit().putInt("theme_style", pos).apply();
+                    AgeWidgetProvider.updateAll(MainActivity.this);
+                    recreate();
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        body.addView(label("APPEARANCE", 11, palette.text));
+        Spinner modePicker = styledSpinner(DeviceTheme.MODES,
+                AgeCalculator.settings(this).getInt("theme_mode", 0));
+        body.addView(modePicker);
+        modePicker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                if (AgeCalculator.settings(MainActivity.this).getInt("theme_mode", 0) != pos) {
+                    AgeCalculator.settings(MainActivity.this).edit().putInt("theme_mode", pos).apply();
+                    AgeWidgetProvider.updateAll(MainActivity.this);
+                    recreate();
+                }
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
 
         LinearLayout preview = new LinearLayout(this);
         preview.setOrientation(LinearLayout.VERTICAL);
         preview.setPadding(dp(18), dp(20), dp(18), dp(18));
-        preview.setBackground(rounded(0xFF191919, dp(24)));
+        preview.setBackground(rounded(palette.card, dp(24)));
         body.addView(preview, new LinearLayout.LayoutParams(-1, dp(212)));
-        preview.addView(label("A G E   I N   M O T I O N", 11, Color.WHITE));
+        preview.addView(label("A G E   I N   M O T I O N", 11, palette.text));
         LinearLayout digits = new LinearLayout(this);
         digits.setOrientation(LinearLayout.HORIZONTAL);
         digits.setGravity(Gravity.CENTER_VERTICAL);
@@ -102,18 +149,18 @@ public final class MainActivity extends Activity {
         digits.addView(wholeImage, new LinearLayout.LayoutParams(0, -1, 3));
         digits.addView(fractionImage, new LinearLayout.LayoutParams(0, -1, 7));
         LinearLayout hints = new LinearLayout(this);
-        hints.addView(label("FULL YEARS", 10, 0xFFB6B6B6), new LinearLayout.LayoutParams(0, -2, 3));
-        hints.addView(label("FRACTION OF THIS YEAR", 10, 0xFFB6B6B6), new LinearLayout.LayoutParams(0, -2, 7));
+        hints.addView(label("FULL YEARS", 10, palette.muted), new LinearLayout.LayoutParams(0, -2, 3));
+        hints.addView(label("FRACTION OF THIS YEAR", 10, palette.muted), new LinearLayout.LayoutParams(0, -2, 7));
         preview.addView(hints);
-        liveExplanation = label("Choose your birthday to begin.", 12, 0xFFE3E3E3);
+        liveExplanation = label("Choose your birthday to begin.", 12, palette.text);
         liveExplanation.setPadding(0, dp(15), 0, dp(18));
         liveExplanation.setLineSpacing(dp(3), 1f);
         body.addView(liveExplanation);
 
-        TextView dobTitle = label("DATE OF BIRTH", 12, 0xFFCCCCCC);
+        TextView dobTitle = label("DATE OF BIRTH", 12, palette.muted);
         dobTitle.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         body.addView(dobTitle);
-        birthDateLabel = label("Not set", 19, Color.WHITE);
+        birthDateLabel = label("Not set", 19, palette.text);
         birthDateLabel.setPadding(0, dp(10), 0, dp(11));
         body.addView(birthDateLabel);
         Button birthdayButton = new Button(this);
@@ -122,7 +169,7 @@ public final class MainActivity extends Activity {
         birthdayButton.setOnClickListener(v -> chooseBirthday());
         body.addView(birthdayButton, new LinearLayout.LayoutParams(-1, dp(52)));
 
-        TextView motionTitle = label("SMART MOTION  /  LOW BATTERY IMPACT", 12, Color.WHITE);
+        TextView motionTitle = label("SMART MOTION  /  LOW BATTERY IMPACT", 12, palette.text);
         motionTitle.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         LinearLayout.LayoutParams mh = new LinearLayout.LayoutParams(-1, -2);
         mh.topMargin = dp(25);
@@ -131,7 +178,7 @@ public final class MainActivity extends Activity {
                 "After you unlock: age digits refresh every 2 seconds for 90 seconds, " +
                 "then every 10 seconds. After 5 minutes updates pause until the next unlock. " +
                 "Battery Saver slows them to 15 seconds. The service never wakes the screen.",
-                12, 0xFFB3B3B3);
+                12, palette.muted);
         motionDescription.setPadding(0, dp(8), 0, dp(12));
         motionDescription.setLineSpacing(dp(3), 1f);
         body.addView(motionDescription);
@@ -142,9 +189,9 @@ public final class MainActivity extends Activity {
 
         CheckBox lockNotification = new CheckBox(this);
         lockNotification.setText("Show my age in a lock-screen notification");
-        lockNotification.setTextColor(Color.WHITE);
+        lockNotification.setTextColor(palette.text);
         lockNotification.setTextSize(13);
-        lockNotification.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        lockNotification.setButtonTintList(android.content.res.ColorStateList.valueOf(palette.accent));
         lockNotification.setPadding(0, dp(14), 0, 0);
         lockNotification.setChecked(AgeCalculator.settings(this).getBoolean("lock_notification", false));
         lockNotification.setOnCheckedChangeListener((button, checked) -> {
@@ -160,7 +207,7 @@ public final class MainActivity extends Activity {
                 "lock screen. This optional notification is NOT a lock-screen widget. " +
                 "It can appear there only if Nothing OS notification privacy settings allow it. " +
                 "Leave it off if you prefer to keep your age private.",
-                12, 0xFF999999);
+                12, palette.muted);
         lockNote.setLineSpacing(dp(3), 1f);
         body.addView(lockNote);
 
@@ -186,8 +233,10 @@ public final class MainActivity extends Activity {
                 "Note: Android does not provide an unprivileged way to detect precisely " +
                 "when the home launcher is visible. Updates happen briefly when the " +
                 "phone is unlocked, including when another app is open, before auto-pausing.\n\n" +
+                "Compatible with standard home-screen widget hosts on Android 8+. " +
+                "Lock-screen widgets are controlled by the device/launcher and are not guaranteed.\n\n" +
                 "Original concept: Age in Motion by Rahul, Nothing Playground. " +
-                "This is an unofficial recreation.", 12, 0xFFAEAEAE);
+                "This is an unofficial recreation.", 12, palette.muted);
         instructions.setLineSpacing(dp(4), 1f);
         LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(-1, -2);
         ip.topMargin = dp(27);
@@ -282,11 +331,43 @@ public final class MainActivity extends Activity {
                 birthday.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.US)));
     }
 
+    private Spinner styledSpinner(String[] values, int selected) {
+        Spinner spinner = new Spinner(this);
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_dropdown_item, values) {
+            @Override public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView text = new TextView(MainActivity.this);
+                text.setText(getItem(position));
+                text.setTextColor(palette.text);
+                text.setGravity(Gravity.CENTER_VERTICAL);
+                text.setTextSize(14);
+                text.setPadding(dp(15), 0, dp(8), 0);
+                return text;
+            }
+            @Override public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+                TextView text = new TextView(MainActivity.this);
+                text.setText(getItem(position));
+                text.setTextColor(palette.text);
+                text.setBackgroundColor(palette.card);
+                text.setTextSize(15);
+                text.setPadding(dp(18), dp(13), dp(18), dp(13));
+                return text;
+            }
+        };
+        spinner.setAdapter(adapter);
+        spinner.setSelection(selected >= 0 && selected < values.length ? selected : 0);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(48));
+        params.bottomMargin = dp(12);
+        spinner.setLayoutParams(params);
+        spinner.setBackground(rounded(palette.card, dp(12)));
+        return spinner;
+    }
+
     private void styleButton(Button b, boolean primary) {
         b.setAllCaps(false);
-        b.setTextColor(primary ? Color.BLACK : Color.WHITE);
+        b.setTextColor(primary ? palette.buttonText : palette.text);
         b.setTextSize(13);
-        b.setBackground(rounded(primary ? Color.WHITE : 0xFF2A2A2A, dp(14)));
+        b.setBackground(rounded(primary ? palette.accent : palette.card, dp(14)));
     }
     private GradientDrawable rounded(int color, int corner) {
         GradientDrawable shape = new GradientDrawable();

@@ -32,7 +32,8 @@ public final class AgeWidgetProvider extends AppWidgetProvider {
         String action = intent.getAction();
         if (ACTION_REFRESH.equals(action) || Intent.ACTION_DATE_CHANGED.equals(action)
                 || Intent.ACTION_TIME_CHANGED.equals(action)
-                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)) {
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
+                || Intent.ACTION_CONFIGURATION_CHANGED.equals(action)) {
             updateAll(context);
         }
     }
@@ -48,15 +49,17 @@ public final class AgeWidgetProvider extends AppWidgetProvider {
         if (ids.length == 0) return;
         LocalDate dob = AgeCalculator.birthday(context);
         AgeCalculator.AgeSnapshot age = AgeCalculator.snapshot(dob);
+        DeviceTheme theme = DeviceTheme.get(context);
         String whole = dob == null ? "--" : String.valueOf(age.fullYears);
         // While in Smart Motion, the LAST digits update every ~2 seconds (rather than
         // trying to redraw the entire bitmap at 30 fps and draining battery).
         String fraction = dob == null ? ".--------" : age.fractionalDigits(8);
-        if (!whole.equals(cachedYearText) || cachedYearBitmap == null) {
-            cachedYearText = whole;
-            cachedYearBitmap = DotMatrix.bitmap(whole, 180, 108);
+        String cacheKey = whole + "/" + theme.accent;
+        if (!cacheKey.equals(cachedYearText) || cachedYearBitmap == null) {
+            cachedYearText = cacheKey;
+            cachedYearBitmap = DotMatrix.bitmap(whole, 180, 108, theme.accent);
         }
-        android.graphics.Bitmap fractionBitmap = DotMatrix.bitmap(fraction, 490, 108);
+        android.graphics.Bitmap fractionBitmap = DotMatrix.bitmap(fraction, 490, 108, theme.accent);
         String caption = dob == null ? "TAP TO CHOOSE YOUR BIRTHDAY"
                 : String.format(Locale.US, "%.2f%% OF THE WAY TO %d",
                     age.fraction * 100.0, age.fullYears + 1);
@@ -64,6 +67,19 @@ public final class AgeWidgetProvider extends AppWidgetProvider {
                 LiveMotionService.isAnimating() ? "LIVE" : "PAUSED";
         for (int id : ids) {
             RemoteViews rv = new RemoteViews(context.getPackageName(), R.layout.widget_age);
+            rv.setInt(R.id.widget_root, "setBackgroundResource", theme.widgetBackground);
+            rv.setTextViewText(R.id.widget_title, theme.family.equals("Nothing Dot")
+                    ? "A G E   I N   M O T I O N" : "AGE IN MOTION");
+            rv.setTextColor(R.id.widget_title, theme.text);
+            rv.setTextColor(R.id.widget_state, theme.muted);
+            rv.setTextColor(R.id.widget_caption, theme.text);
+            rv.setTextColor(R.id.widget_refresh, theme.accent);
+            rv.setTextColor(R.id.widget_years_label, theme.muted);
+            rv.setTextColor(R.id.widget_fraction_label, theme.muted);
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                android.content.res.ColorStateList tint = android.content.res.ColorStateList.valueOf(theme.accent);
+                rv.setColorStateList(R.id.year_progress, "setProgressTintList", tint);
+            }
             rv.setImageViewBitmap(R.id.dot_years, cachedYearBitmap);
             rv.setImageViewBitmap(R.id.dot_fraction, fractionBitmap);
             rv.setTextViewText(R.id.widget_caption, caption);

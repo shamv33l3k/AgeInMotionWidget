@@ -28,14 +28,18 @@ final class DotMatrix {
     private DotMatrix() { }
 
     static Bitmap bitmap(String content) {
-        return bitmap(content, 650, 140);
+        return bitmap(content, 650, 140, Color.WHITE);
     }
 
     static Bitmap bitmap(String content, int width, int height) {
+        return bitmap(content, width, height, Color.WHITE);
+    }
+
+    static Bitmap bitmap(String content, int width, int height, int foreground) {
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.WHITE);
+        paint.setColor(foreground);
         int cols = Math.max(1, content.length() * 6 - 1);
         float pitch = Math.min((width - 8f) / cols, (height - 12f) / 7f);
         float x0 = (width - cols * pitch) / 2f + pitch / 2f;
