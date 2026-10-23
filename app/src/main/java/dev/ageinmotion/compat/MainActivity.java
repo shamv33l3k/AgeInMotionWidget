@@ -13,9 +13,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
-import android.view.View;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -28,232 +28,246 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private ImageView liveAge;
+    private ImageView wholeImage;
+    private ImageView fractionImage;
     private TextView birthDateLabel;
-    private TextView runningCaption;
+    private TextView liveExplanation;
     private Button motionButton;
     private boolean active;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 2002;
 
-    private final Runnable refresh = new Runnable() {
+    private final Runnable redraw = new Runnable() {
         @Override public void run() {
             if (!active) return;
             LocalDate dob = AgeCalculator.birthday(MainActivity.this);
-            liveAge.setImageBitmap(DotMatrix.bitmap(AgeCalculator.decimalAge(dob, 8)));
-            handler.postDelayed(this, 300L);
+            AgeCalculator.AgeSnapshot s = AgeCalculator.snapshot(dob);
+            wholeImage.setImageBitmap(DotMatrix.bitmap(dob == null ? "--" :
+                    String.valueOf(s.fullYears), 180, 108));
+            fractionImage.setImageBitmap(DotMatrix.bitmap(dob == null ? ".--------" :
+                    s.fractionalDigits(8), 490, 108));
+            liveExplanation.setText(dob == null ? "Choose your birthday to begin." :
+                    s.fullYears + " = completed birthdays\n" +
+                    s.fractionalDigits(8) + " = part of the year since your last birthday\n" +
+                    String.format(Locale.US, "%.2f%% of the way to age %d", s.fraction * 100.0, s.fullYears + 1));
+            handler.postDelayed(this, 400L);
         }
     };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(8, 8, 8));
-        getWindow().setNavigationBarColor(Color.rgb(8, 8, 8));
-
-        int outer = dp(22);
+        getWindow().setStatusBarColor(0xFF090909);
+        getWindow().setNavigationBarColor(0xFF090909);
+        int pad = dp(22);
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.rgb(8, 8, 8));
+        scroll.setBackgroundColor(0xFF090909);
         scroll.setFillViewport(true);
-        scroll.setClipToPadding(false);
-        scroll.setPadding(outer, dp(32), outer, dp(28));
-
+        scroll.setPadding(pad, dp(34), pad, dp(28));
         if (Build.VERSION.SDK_INT >= 35) {
-            scroll.setOnApplyWindowInsetsListener((view, insets) -> {
-                android.graphics.Insets system = insets.getInsets(
+            scroll.setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(
                         WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                scroll.setPadding(outer, dp(24) + system.top, outer, dp(28) + system.bottom);
+                scroll.setPadding(pad, dp(28) + bars.top, pad, dp(28) + bars.bottom);
                 return insets;
             });
         }
-
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(body);
 
-        TextView eyebrow = label("N O T H I N G  /  I N S P I R E D", 11, 0xFFAAAAAA);
-        body.addView(eyebrow);
-
-        TextView heading = label("AGE IN MOTION", 29, Color.WHITE);
-        heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        heading.setPadding(0, dp(15), 0, dp(8));
-        body.addView(heading);
-
-        TextView intro = label("Your life, counted in moments. Compatible with standard Android widgets on Nothing OS 3.2.",
-                14, 0xFFB5B5B5);
-        intro.setLineSpacing(dp(3), 1f);
+        body.addView(label("N O T H I N G  O S  3.2  /  COMPATIBILITY", 10, 0xFFAAAAAA));
+        TextView title = label("AGE IN MOTION", 28, Color.WHITE);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setPadding(0, dp(12), 0, dp(8));
+        body.addView(title);
+        TextView intro = label("Every second matters. See your exact age, explained — with battery-aware motion.",
+                14, 0xFFBBBBBB);
+        intro.setPadding(0, 0, 0, dp(24));
         body.addView(intro);
 
-        LinearLayout widgetCard = new LinearLayout(this);
-        widgetCard.setOrientation(LinearLayout.VERTICAL);
-        widgetCard.setGravity(Gravity.CENTER_VERTICAL);
-        widgetCard.setPadding(dp(20), dp(20), dp(20), dp(20));
-        GradientDrawable cardBackground = new GradientDrawable();
-        cardBackground.setColor(0xFF191919);
-        cardBackground.setCornerRadius(dp(24));
-        widgetCard.setBackground(cardBackground);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, dp(184));
-        cardParams.topMargin = dp(32);
-        body.addView(widgetCard, cardParams);
+        LinearLayout preview = new LinearLayout(this);
+        preview.setOrientation(LinearLayout.VERTICAL);
+        preview.setPadding(dp(18), dp(20), dp(18), dp(18));
+        preview.setBackground(rounded(0xFF191919, dp(24)));
+        body.addView(preview, new LinearLayout.LayoutParams(-1, dp(212)));
+        preview.addView(label("A G E   I N   M O T I O N", 11, Color.WHITE));
+        LinearLayout digits = new LinearLayout(this);
+        digits.setOrientation(LinearLayout.HORIZONTAL);
+        digits.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams digitParams = new LinearLayout.LayoutParams(-1, 0, 1f);
+        preview.addView(digits, digitParams);
+        wholeImage = new ImageView(this);
+        fractionImage = new ImageView(this);
+        wholeImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        fractionImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        digits.addView(wholeImage, new LinearLayout.LayoutParams(0, -1, 3));
+        digits.addView(fractionImage, new LinearLayout.LayoutParams(0, -1, 7));
+        LinearLayout hints = new LinearLayout(this);
+        hints.addView(label("FULL YEARS", 10, 0xFFB6B6B6), new LinearLayout.LayoutParams(0, -2, 3));
+        hints.addView(label("FRACTION OF THIS YEAR", 10, 0xFFB6B6B6), new LinearLayout.LayoutParams(0, -2, 7));
+        preview.addView(hints);
+        liveExplanation = label("Choose your birthday to begin.", 12, 0xFFE3E3E3);
+        liveExplanation.setPadding(0, dp(15), 0, dp(18));
+        liveExplanation.setLineSpacing(dp(3), 1f);
+        body.addView(liveExplanation);
 
-        TextView widgetTitle = label("A G E  I N  M O T I O N", 10, 0xFFC1C1C1);
-        widgetTitle.setTypeface(Typeface.MONOSPACE);
-        widgetCard.addView(widgetTitle);
-
-        liveAge = new ImageView(this);
-        liveAge.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        widgetCard.addView(liveAge, new LinearLayout.LayoutParams(-1, 0, 1f));
-
-        runningCaption = label("YOUR AGE / LIVE PREVIEW", 10, 0xFFA5A5A5);
-        runningCaption.setTypeface(Typeface.MONOSPACE);
-        widgetCard.addView(runningCaption);
-
-        TextView chooseTitle = label("DATE OF BIRTH", 12, 0xFFCCCCCC);
-        chooseTitle.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        LinearLayout.LayoutParams section = new LinearLayout.LayoutParams(-1, -2);
-        section.topMargin = dp(30);
-        body.addView(chooseTitle, section);
-
-        birthDateLabel = label("Not set", 20, Color.WHITE);
-        birthDateLabel.setPadding(0, dp(10), 0, dp(14));
+        TextView dobTitle = label("DATE OF BIRTH", 12, 0xFFCCCCCC);
+        dobTitle.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        body.addView(dobTitle);
+        birthDateLabel = label("Not set", 19, Color.WHITE);
+        birthDateLabel.setPadding(0, dp(10), 0, dp(11));
         body.addView(birthDateLabel);
+        Button birthdayButton = new Button(this);
+        birthdayButton.setText("SET MY BIRTHDAY");
+        styleButton(birthdayButton, true);
+        birthdayButton.setOnClickListener(v -> chooseBirthday());
+        body.addView(birthdayButton, new LinearLayout.LayoutParams(-1, dp(52)));
 
-        Button select = new Button(this);
-        select.setText("CHOOSE MY BIRTHDAY");
-        select.setAllCaps(false);
-        select.setTextColor(Color.BLACK);
-        select.setTextSize(14);
-        select.setBackground(rounded(0xFFFFFFFF, dp(15)));
-        select.setOnClickListener(v -> showDatePicker());
-        body.addView(select, new LinearLayout.LayoutParams(-1, dp(53)));
+        TextView motionTitle = label("SMART MOTION  /  LOW BATTERY IMPACT", 12, Color.WHITE);
+        motionTitle.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        LinearLayout.LayoutParams mh = new LinearLayout.LayoutParams(-1, -2);
+        mh.topMargin = dp(25);
+        body.addView(motionTitle, mh);
+        TextView motionDescription = label(
+                "After you unlock: age digits refresh every 2 seconds for 90 seconds, " +
+                "then every 10 seconds. After 5 minutes updates pause until the next unlock. " +
+                "Battery Saver slows them to 15 seconds. The service never wakes the screen.",
+                12, 0xFFB3B3B3);
+        motionDescription.setPadding(0, dp(8), 0, dp(12));
+        motionDescription.setLineSpacing(dp(3), 1f);
+        body.addView(motionDescription);
+        motionButton = new Button(this);
+        styleButton(motionButton, false);
+        motionButton.setOnClickListener(v -> toggleMotion());
+        body.addView(motionButton, new LinearLayout.LayoutParams(-1, dp(53)));
 
-        Button forceRefresh = new Button(this);
-        forceRefresh.setText("REFRESH HOME-SCREEN WIDGET");
-        forceRefresh.setAllCaps(false);
-        forceRefresh.setTextColor(Color.WHITE);
-        forceRefresh.setTextSize(12);
-        forceRefresh.setBackground(rounded(0xFF2C2C2C, dp(15)));
-        LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(-1, dp(51));
-        refreshParams.topMargin = dp(12);
-        body.addView(forceRefresh, refreshParams);
-        forceRefresh.setOnClickListener(v -> {
+        CheckBox lockNotification = new CheckBox(this);
+        lockNotification.setText("Show my age in a lock-screen notification");
+        lockNotification.setTextColor(Color.WHITE);
+        lockNotification.setTextSize(13);
+        lockNotification.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        lockNotification.setPadding(0, dp(14), 0, 0);
+        lockNotification.setChecked(AgeCalculator.settings(this).getBoolean("lock_notification", false));
+        lockNotification.setOnCheckedChangeListener((button, checked) -> {
+            AgeCalculator.settings(this).edit().putBoolean("lock_notification", checked).apply();
+            if (LiveMotionService.isRunning()) {
+                startService(new Intent(this, LiveMotionService.class)
+                        .setAction(LiveMotionService.ACTION_UPDATE_NOTIFICATION));
+            }
+        });
+        body.addView(lockNotification);
+        TextView lockNote = label(
+                "IMPORTANT: Nothing OS 3.2 does not host third-party widgets on its native " +
+                "lock screen. This optional notification is NOT a lock-screen widget. " +
+                "It can appear there only if Nothing OS notification privacy settings allow it. " +
+                "Leave it off if you prefer to keep your age private.",
+                12, 0xFF999999);
+        lockNote.setLineSpacing(dp(3), 1f);
+        body.addView(lockNote);
+
+        Button refresh = new Button(this);
+        refresh.setText("REFRESH HOME WIDGET NOW");
+        styleButton(refresh, false);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(50));
+        rp.topMargin = dp(18);
+        body.addView(refresh, rp);
+        refresh.setOnClickListener(v -> {
             AgeWidgetProvider.updateAll(this);
             android.widget.Toast.makeText(this, "Widget refreshed", android.widget.Toast.LENGTH_SHORT).show();
         });
-
-        TextView motionHeading = label("HOME SCREEN / ANIMATED NUMBERS", 12, Color.WHITE);
-        motionHeading.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        LinearLayout.LayoutParams motionHeaderParams = new LinearLayout.LayoutParams(-1, -2);
-        motionHeaderParams.topMargin = dp(26);
-        body.addView(motionHeading, motionHeaderParams);
-
-        TextView motionDescription = label(
-                "Enable Live Motion to animate the AGE digits on the home screen. "
-              + "8 decimal places update every 2 seconds while your screen is on. "
-              + "Android may pause updates to save power. Uses extra battery and "
-              + "shows an ongoing notification until switched off.",
-                12, 0xFFAAAAAA);
-        motionDescription.setLineSpacing(dp(3), 1f);
-        motionDescription.setPadding(0, dp(8), 0, dp(12));
-        body.addView(motionDescription);
-
-        motionButton = new Button(this);
-        motionButton.setTextSize(14);
-        motionButton.setAllCaps(false);
-        motionButton.setOnClickListener(v -> toggleLiveMotion());
-        body.addView(motionButton, new LinearLayout.LayoutParams(-1, dp(54)));
-        updateLiveMotionButton();
-
-        TextView steps = label(
-                "ADD TO YOUR HOME SCREEN\n\n"
-              + "1. Set your date of birth above.\n"
-              + "2. Long-press an empty area of your home screen.\n"
-              + "3. Tap Widgets and find Age in Motion.\n"
-              + "4. Drag it onto the home screen (2 × 2 recommended).\n\n"
-              + "Turn on LIVE MOTION above to make the age digits change on the HOME SCREEN. "
-              + "Without Live Motion the age updates about every 30 minutes, while "
-              + "the TODAY chronometer continues ticking. Switch Live Motion OFF "
-              + "to save battery.",
-                13, 0xFFAEAEAE);
-        steps.setLineSpacing(dp(4), 1f);
-        LinearLayout.LayoutParams stepsParams = new LinearLayout.LayoutParams(-1, -2);
-        stepsParams.topMargin = dp(30);
-        body.addView(steps, stepsParams);
-
+        TextView instructions = label(
+                "HOW TO USE\n" +
+                "1  Set your birthday.\n" +
+                "2  Long-press your HOME SCREEN → Widgets → Age in Motion.\n" +
+                "3  Use a 4 × 2 layout for readable digits.\n" +
+                "4  Enable Smart Motion above to animate the decimals.\n\n" +
+                "The two numbers mean: [full years] + [fraction of the year]. " +
+                "Example: 35.83158642 = 35 completed years + 83.16% of the way to 36. " +
+                "The decimals are NOT months, days, or seconds.\n\n" +
+                "Note: Android does not provide an unprivileged way to detect precisely " +
+                "when the home launcher is visible. Updates happen briefly when the " +
+                "phone is unlocked, including when another app is open, before auto-pausing.\n\n" +
+                "Original concept: Age in Motion by Rahul, Nothing Playground. " +
+                "This is an unofficial recreation.", 12, 0xFFAEAEAE);
+        instructions.setLineSpacing(dp(4), 1f);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(-1, -2);
+        ip.topMargin = dp(27);
+        body.addView(instructions, ip);
         setContentView(scroll);
-        updateBirthdayLabel();
+        updateDobLabel();
+        updateMotionButton();
     }
 
     @Override protected void onResume() {
         super.onResume();
         active = true;
-        handler.post(refresh);
-        updateBirthdayLabel();
-        updateLiveMotionButton();
+        handler.post(redraw);
+        updateDobLabel();
+        updateMotionButton();
     }
-
     @Override protected void onPause() {
         active = false;
-        handler.removeCallbacks(refresh);
+        handler.removeCallbacks(redraw);
         super.onPause();
     }
 
-    private void toggleLiveMotion() {
+    private void toggleMotion() {
         if (LiveMotionService.isRunning()) {
             stopService(new Intent(this, LiveMotionService.class));
-            handler.postDelayed(this::updateLiveMotionButton, 250L);
+            handler.postDelayed(this::updateMotionButton, 300L);
             return;
         }
         if (AgeCalculator.birthday(this) == null) {
-            android.widget.Toast.makeText(this, "Choose your birthday first", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(this, "Choose your birthday first", android.widget.Toast.LENGTH_SHORT).show();
             return;
         }
         if (Build.VERSION.SDK_INT >= 33 &&
-                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
                     NOTIFICATION_PERMISSION_REQUEST);
             return;
         }
-        enableLiveMotion();
+        startMotionService();
     }
 
-    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
-            // FGS may run even if notification permission is denied on Android 13+;
-            // Android shows it in its running-apps task manager instead.
-            enableLiveMotion();
-        }
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                                      int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) startMotionService();
     }
 
-    private void enableLiveMotion() {
-        Intent service = new Intent(this, LiveMotionService.class);
+    private void startMotionService() {
         try {
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service);
-            else startService(service);
-            handler.postDelayed(this::updateLiveMotionButton, 450L);
-        } catch (RuntimeException blocked) {
+            Intent i = new Intent(this, LiveMotionService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(i);
+            else startService(i);
+            handler.postDelayed(this::updateMotionButton, 400L);
+        } catch (RuntimeException ex) {
             android.widget.Toast.makeText(this,
-                    "Android blocked Live Motion. Try turning off Battery Saver.",
+                    "Android blocked animation service; check battery and notification settings.",
                     android.widget.Toast.LENGTH_LONG).show();
-            updateLiveMotionButton();
         }
     }
 
-    private void updateLiveMotionButton() {
+    private void updateMotionButton() {
         if (motionButton == null) return;
-        boolean enabled = LiveMotionService.isRunning();
-        motionButton.setText(enabled ? "●  LIVE MOTION ON   —   TAP TO STOP" :
-                "○  START LIVE MOTION (2 SEC)");
-        motionButton.setTextColor(enabled ? Color.BLACK : Color.WHITE);
-        motionButton.setBackground(rounded(enabled ? Color.WHITE : 0xFF333333, dp(15)));
+        boolean running = LiveMotionService.isRunning();
+        motionButton.setText(running ? "●  SMART MOTION ON  —  TAP TO STOP" :
+                "○  ENABLE SMART MOTION");
+        styleButton(motionButton, running);
     }
 
-    private void showDatePicker() {
+    private void chooseBirthday() {
         LocalDate initial = AgeCalculator.birthday(this);
-        if (initial == null) initial = LocalDate.now().minusYears(23);
-        DatePickerDialog picker = new DatePickerDialog(this, (DatePicker view, int year, int month, int day) -> {
+        if (initial == null) initial = LocalDate.now().minusYears(25);
+        DatePickerDialog picker = new DatePickerDialog(this, (DatePicker dp, int year, int month, int day) -> {
             AgeCalculator.saveBirthday(this, LocalDate.of(year, month + 1, day));
-            updateBirthdayLabel();
+            updateDobLabel();
             AgeWidgetProvider.updateAll(this);
+            if (LiveMotionService.isRunning()) {
+                startService(new Intent(this, LiveMotionService.class)
+                        .setAction(LiveMotionService.ACTION_UPDATE_NOTIFICATION));
+            }
         }, initial.getYear(), initial.getMonthValue() - 1, initial.getDayOfMonth());
         picker.getDatePicker().setMaxDate(System.currentTimeMillis());
         picker.getDatePicker().setMinDate(LocalDate.of(1900, 1, 1)
@@ -261,34 +275,33 @@ public final class MainActivity extends Activity {
         picker.show();
     }
 
-    private void updateBirthdayLabel() {
+    private void updateDobLabel() {
         if (birthDateLabel == null) return;
         LocalDate birthday = AgeCalculator.birthday(this);
-        if (birthday == null) {
-            birthDateLabel.setText("Not set — tap below");
-            runningCaption.setText("SET YOUR BIRTHDAY TO START");
-        } else {
-            birthDateLabel.setText(birthday.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.US)));
-            runningCaption.setText("YOUR AGE / LIVE PREVIEW");
-        }
+        birthDateLabel.setText(birthday == null ? "Not set — choose below" :
+                birthday.format(DateTimeFormatter.ofPattern("dd MMMM yyyy", Locale.US)));
     }
 
-    private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    private void styleButton(Button b, boolean primary) {
+        b.setAllCaps(false);
+        b.setTextColor(primary ? Color.BLACK : Color.WHITE);
+        b.setTextSize(13);
+        b.setBackground(rounded(primary ? Color.WHITE : 0xFF2A2A2A, dp(14)));
     }
-
-    private TextView label(String text, int sp, int color) {
-        TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextSize(sp);
-        tv.setTextColor(color);
-        return tv;
-    }
-
-    private GradientDrawable rounded(int color, int radius) {
+    private GradientDrawable rounded(int color, int corner) {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(color);
-        shape.setCornerRadius(radius);
+        shape.setCornerRadius(corner);
         return shape;
+    }
+    private TextView label(String text, int sp, int color) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(sp);
+        view.setTextColor(color);
+        return view;
+    }
+    private int dp(int amount) {
+        return (int)(amount * getResources().getDisplayMetrics().density + .5f);
     }
 }

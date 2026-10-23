@@ -9,51 +9,77 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Locale;
 
-/** Uses calendar anniversaries, not a fixed 365-day approximation. */
+/** Full years plus fraction elapsed between birthdays, in the phone's time zone. */
 final class AgeCalculator {
     private AgeCalculator() { }
 
+    static final class AgeSnapshot {
+        final int fullYears;
+        final double fraction;
+        final double decimalYears;
+        AgeSnapshot(int years, double fractional) {
+            fullYears = years;
+            fraction = fractional;
+            decimalYears = years + fractional;
+        }
+        String fractionalDigits(int digits) {
+            // Truncate, don't round into 1.00000000 just before a birthday.
+            long scale = 1;
+            for (int i = 0; i < digits; i++) scale *= 10;
+            long raw = (long) Math.floor(Math.max(0, Math.min(.99999999999, fraction)) * scale);
+            return "." + String.format(Locale.US, "%0" + digits + "d", raw);
+        }
+        String explanation() {
+            return String.format(Locale.US, "%d full years + %.2f%% toward %d",
+                    fullYears, fraction * 100.0, fullYears + 1);
+        }
+    }
+
+    static SharedPreferences settings(Context c) {
+        return c.getSharedPreferences("age_settings", Context.MODE_PRIVATE);
+    }
+
     static LocalDate birthday(Context context) {
-        SharedPreferences p = context.getSharedPreferences("age_settings", Context.MODE_PRIVATE);
+        SharedPreferences p = settings(context);
         int year = p.getInt("year", 0);
         if (year == 0) return null;
         try {
             return LocalDate.of(year, p.getInt("month", 1), p.getInt("day", 1));
-        } catch (RuntimeException invalid) {
-            return null;
-        }
+        } catch (RuntimeException invalid) { return null; }
     }
 
     static void saveBirthday(Context context, LocalDate birthday) {
-        context.getSharedPreferences("age_settings", Context.MODE_PRIVATE).edit()
+        settings(context).edit()
                 .putInt("year", birthday.getYear())
                 .putInt("month", birthday.getMonthValue())
-                .putInt("day", birthday.getDayOfMonth())
-                .apply();
+                .putInt("day", birthday.getDayOfMonth()).apply();
+    }
+
+    static AgeSnapshot snapshot(LocalDate birthday) {
+        return snapshot(birthday, ZonedDateTime.now());
+    }
+
+    static AgeSnapshot snapshot(LocalDate birthday, ZonedDateTime now) {
+        if (birthday == null || birthday.isAfter(now.toLocalDate())) return new AgeSnapshot(0, 0);
+        int years = now.getYear() - birthday.getYear();
+        LocalDate last = birthday.plusYears(years);
+        if (last.isAfter(now.toLocalDate())) {
+            years--;
+            last = birthday.plusYears(years);
+        }
+        LocalDate next = birthday.plusYears(years + 1);
+        ZoneId zone = now.getZone();
+        Instant start = last.atStartOfDay(zone).toInstant();
+        Instant end = next.atStartOfDay(zone).toInstant();
+        double elapsed = now.toInstant().toEpochMilli() - start.toEpochMilli();
+        double duration = end.toEpochMilli() - start.toEpochMilli();
+        double fraction = Math.min(0.99999999999, Math.max(0.0, elapsed / duration));
+        return new AgeSnapshot(years, fraction);
     }
 
     static String decimalAge(LocalDate birthday, int decimals) {
-        if (birthday == null) return decimals == 4 ? "00.0000" : "00.00000000";
-        double value = calculate(birthday, ZonedDateTime.now());
-        return String.format(Locale.US, "%1$." + decimals + "f", value);
-    }
-
-    static double calculate(LocalDate birthday, ZonedDateTime now) {
-        ZoneId zone = now.getZone();
-        LocalDate today = now.toLocalDate();
-        if (birthday.isAfter(today)) return 0.0;
-
-        int years = today.getYear() - birthday.getYear();
-        LocalDate lastBirthday = birthday.plusYears(years);
-        if (lastBirthday.isAfter(today)) {
-            years--;
-            lastBirthday = birthday.plusYears(years);
-        }
-        LocalDate nextBirthday = birthday.plusYears(years + 1);
-        Instant start = lastBirthday.atStartOfDay(zone).toInstant();
-        Instant end = nextBirthday.atStartOfDay(zone).toInstant();
-        double elapsed = (now.toInstant().toEpochMilli() - start.toEpochMilli());
-        double total = (end.toEpochMilli() - start.toEpochMilli());
-        return years + Math.min(0.9999999999, Math.max(0, elapsed / total));
+        if (birthday == null) return "--.--------";
+        AgeSnapshot s = snapshot(birthday);
+        return s.fullYears + s.fractionalDigits(decimals);
     }
 }
