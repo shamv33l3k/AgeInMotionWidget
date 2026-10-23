@@ -1,55 +1,79 @@
-# Age in Motion • Nothing OS 3.2 • Live Motion v2
+# Age in Motion — Smart Motion v3 (Nothing OS 3.2)
 
-An independent Android home-screen widget for Nothing Phone (1) and other supported Android phones. Inspired by **Rahul's original Age in Motion widget**, available on Nothing Playground for Nothing OS 4.0+.
+**An independent Android home-screen widget for Nothing Phone (1) and other compatible devices that cannot run the Nothing OS 4.0+ Playground edition.**
 
-❤️ **Respect and full credit to Mr. Rahul for the original concept and inspiration.** [See the original by Rahul](https://playground.nothing.tech/detail/app/A0iu5DKA7eGhHhZD).
+Inspired by **Rahul's original [Age in Motion](https://playground.nothing.tech/detail/app/A0iu5DKA7eGhHhZD)**. A huge salute and thanks to Rahul for the original idea. This independent compatibility project is **not an official Nothing widget**, endorsed by Nothing, or affiliated with Rahul.
 
-This is an independent compatibility project, not an official Nothing Playground widget and not affiliated with Nothing Technology Limited or Rahul.
+## What it looks like
 
-## What's new in v2
+![Age in Motion v3 design preview, example age](docs/age-in-motion-v3-design-preview.png)
 
-- **NEW: Live Motion** switch in the app. Switch it ON to redraw the *actual age digits on the home screen* approximately every **2 seconds**, with **8 decimal places**.
-- The dot-matrix numbers animate when the display is on. When the screen turns off, the service pauses image redraws to reduce battery use, and resumes when the screen turns on.
-- Shows an ongoing Android foreground-service notification while Live Motion is enabled. Stop it inside the app or from the notification.
-- Switch Live Motion OFF to use the original low-power mode: age digits refresh approximately every 30 minutes, and the TODAY seconds chronometer still ticks.
-- No ads, trackers, network permissions, account, root, launcher replacement, or auto-start at boot.
+*Design preview showing a fictional age (35.83158642), not an actual user birth date. Layout adapts to the available home-screen widget space; 4 × 2 is recommended.*
 
-## What to expect
+### A user-provided screenshot from the earlier design
 
-* Android widgets do **not** support unrestricted continuously animated custom images. This workaround uses a user-started foreground service and full widget redraws. Android/Nothing OS may still delay or stop redraws during battery saving, and frequent redraws consume extra battery. This is **not exactly the same animation mechanism as Nothing OS 4.0 Playground**.
-* The 8-decimal digits are smaller on compact 2×2 widgets. Resize the widget to 3×2 or 4×2 if you want easier-to-read numbers.
-* Live Motion is **OFF by default** and **does not restart by itself after reboot**. Reopen the app and press START LIVE MOTION when you want animated digits again.
-* Your date of birth remains stored locally in Android SharedPreferences.
+![User screenshot of earlier Age in Motion app home widget](docs/age-in-motion-original-screen.jpg)
+
+*The screenshot above documents the earlier layout. The v3 redesign adds the year/fraction labels and removes the confusing “TODAY” counter.*
+
+## What does 35.83158642 mean?
+
+It **does not mean 35 years, 83 months, or 15 seconds**. It means:
+
+- **35** = full years lived (35 birthdays completed).
+- **.83158642** = the fraction of the **current birthday-to-birthday year** already completed.
+- **83.16% of the way to age 36** = the same fraction, expressed as an easy-to-understand progress percentage.
+
+The changing final decimal digits give the widget its motion. A year of life is approximately 31.5 million seconds; the fraction is calculated from the previous birthday at midnight to the next birthday at midnight in the phone's local time zone, including leap-year differences. Exact decimals shown in screenshots will vary.
+
+## New in v3
+
+- Readable layout: **FULL YEARS** on the left; **FRACTION OF A YEAR** on the right.
+- Clear **% of the way to your next birthday** and simple progress bar.
+- Original black, monochrome 5×7 dot-matrix styling.
+- **Smart Motion (opt-in)**: every 2 seconds for the first 90 seconds after unlock, then every 10 seconds, then pauses after 5 minutes until the next unlock. Android Battery Saver slows animation to 15-second updates.
+- **Zero redraws while screen-off or phone locked**, no wakelock, and no app auto-start after reboot.
+- Optional **lock-screen age notification** (off by default; phone notification settings determine visibility).
+- New device screenshot in this README.
+- Birthday stays local; no Internet permission, tracking, ads, analytics, or account.
+
+### A truthful limitation about home-screen visibility
+
+Ordinary third-party apps cannot reliably detect *only* when the Nothing Launcher home screen is visible using non-privileged APIs. This version updates during a short, battery-limited window whenever the **screen is on and unlocked**, which includes time spent in other apps. It does **not** silently request Accessibility or app-usage history permissions. Android/launcher battery management may still delay updates; exact animation cadence is not guaranteed.
+
+## Lock-screen compatibility
+
+**Nothing OS 3.2 does not expose the standard third-party Android home widget area on its native lock screen.** This is a system limitation: native lock-screen widgets are a Nothing-controlled collection. The v3 app **cannot** add itself as a real lock-screen widget.
+
+As an alternative, you can opt to **show your age in a notification** when Smart Motion is enabled. If your phone allows sensitive notification content on the lock screen, the age may appear there as a notification, **not** a widget. Disabled by default to protect privacy. The phone may hide it depending on notifications and lock-screen settings.
+
+Community references: [Nothing third-party lock-screen widget discussion](https://nothing.community/d/6599-3rd-party-lock-screen-widgets), [Lock-screen widget support discussion](https://nothing.community/d/50508-lock-screen-widget-support).
 
 ## Install using GitHub Actions (no Android Studio)
 
-1. Upload/commit the project files into your GitHub repository, retaining the existing working `.github/workflows/build-apk.yml` workflow.
-2. Open **Actions → Build Android APK**, and open the successful build.
-3. Under **Artifacts**, download the APK artifact ZIP, unzip it, then copy `app-debug.apk` to your phone.
-4. Install the APK, open **Age in Motion**, select your birthday, and add the **Age in Motion** home-screen widget.
-5. Press **START LIVE MOTION (2 SEC)** in the app. Approve notification permission if prompted.
-6. Return to the home screen and observe the age digits. If updates stop, reopen the app to see if Live Motion is still enabled, and review Nothing OS battery restrictions.
+1. On this repository, click **Actions** → **Build Android APK**.
+2. Open the most recent successful build, scroll to **Artifacts**, and download **AgeInMotion-NothingOS3-APK** (requires a GitHub account with repository access).
+3. Extract `app-debug.apk` from the ZIP, copy to your phone, and open it to install.
+4. Open Age in Motion → **Set My Birthday**.
+5. Long-press the **home screen** → **Widgets** → **Age in Motion**; the widget is designed for **4 × 2** but is resizable.
+6. Open the app → **Enable Smart Motion** if you'd like the fraction to animate.
 
-### Very important: updating an existing debug APK
+To make an APK available to visitors without requiring Actions access, publish a signed build as a GitHub Release. A **debug APK** is suitable for private testing but not a proper distribution/signing strategy.
 
-**GitHub Actions' automatically generated debug signing key can change between builds.** If Android says the new APK cannot be installed as an update, you must **uninstall the old Age in Motion app**, install this one, then enter your birthday again. The stored birthday from the previous version may be lost. For public releases or seamless upgrades, configure a persistent private release-signing key in GitHub Actions.
+### Updating from v1/v2
 
-## Technical specifications
+The Android application ID remains `dev.ageinmotion.compat`, and v3 increments the version code to 3. Installing a build signed with the **same signing key** should update the app and retain the saved birthday. GitHub-hosted debug builds on different runners may not share a debug signing key. If Android says "App not installed" or "conflicts with existing package", you may need to uninstall the old version first, which erases the saved birthday and requires re-adding the widget.
 
-- Compatible with Android 8+ (minSdk 26). Developed for Android 15 / Nothing OS 3.2.
-- Standard AppWidgetProvider and RemoteViews, with a 5×7 programmatically drawn dot-matrix font.
-- Android foreground service type `specialUse`, declared with the required foreground-service permissions for Android 14+.
-- Foreground service is started **only when the user presses the switch in the app**, and shows a persistent notification (subject to notification permission).
-- Refresh loop is every 2 seconds when the display is interactive; no wake lock, no background location, no network.
-- Normal widget updates are every approximately 30 minutes, plus date/time/timezone changes.
-- Running persistent foreground services may require additional policy declarations if this app is distributed through Google Play. GitHub APK distribution does not mean the feature is approved for Play Store publication.
+## Build locally
 
-## Build notes
+Android Studio / JDK 17 / Android SDK Platform 35 / Gradle 8.9 / Android Gradle Plugin 8.7.3. Build with `gradle :app:assembleDebug` from the repository root.
 
-This source package was edited and statically reviewed here; **the v2 build and live animation have not yet been tested on your physical phone**. Use your existing GitHub Actions workflow to compile the updated APK and check its logs for any error.
+## Battery and privacy
 
-## Original creator
+The app draws fraction bitmaps for the home widget only during its user-enabled, limited animation window. It doesn't hold a wakelock or update while locked; a **foreground service notification** is shown when Smart Motion is active. If battery efficiency is more important than animation, **disable Smart Motion** — the home widget will fall back to Android's ordinary approximately 30-minute periodic updates and manual refresh.
 
-[Age in Motion by Rahul — Nothing Playground](https://playground.nothing.tech/detail/app/A0iu5DKA7eGhHhZD)
+A foreground service itself has some power cost, even when redrawing is paused. Android is free to delay or stop the service in the background. Notifications may reveal your age if you opt in. The birth date stays on the device in local SharedPreferences and is not sent over the Internet.
 
-*Community-inspired compatibility edition. Not endorsed by Rahul or Nothing Technology Limited.*
+## Development status
+
+Source project prepared for GitHub Actions, **not compiled or device-tested here**. This update needs a successful build and on-device verification before it can be advertised as verified on Nothing OS 3.2. No root needed.
